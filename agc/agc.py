@@ -23,13 +23,13 @@ from collections import Counter
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw
 
-__author__ = "Your Name"
-__copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__author__ = "Delphine NGUYEN"
+__copyright__ = "EISTI / CY Tech"
+__credits__ = ["Delphine NGUYEN"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Delphine NGUYEN"
+__email__ = "nguyendelp@eisti.eu"
 __status__ = "Developpement"
 
 
@@ -55,7 +55,7 @@ def get_arguments():
     parser = argparse.ArgumentParser(description=__doc__, usage=
                                      "{0} -h"
                                      .format(sys.argv[0]))
-    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True, 
+    parser.add_argument('-i', '-amplicon_file', dest='amplicon_file', type=isfile, required=True,
                         help="Amplicon is a compressed fasta file (.fasta.gz)")
     parser.add_argument('-s', '-minseqlen', dest='minseqlen', type=int, default = 400,
                         help="Minimum sequence length for dereplication")
@@ -70,12 +70,37 @@ def get_arguments():
     return parser.parse_args()
 
 def read_fasta(amplicon_file, minseqlen):
-    pass
-
+    """Retourne un générateur de séquence.
+    Séquence comptée si sa longueur est >= à minseqlen"""
+    seq_list = []
+    with gzip.open(amplicon_file, "rt") as file:
+        seq = ""
+        for line in file:
+            line_s = line.strip("\n")
+            if line_s[:1]=="T" or line_s[:1]=="G" or line_s[:1]=="C" or line_s[:1]=="A":
+                seq = seq + line_s
+            else:
+                seq_list.append(seq.strip("\n"))
+                seq = ""
+        for elm in seq_list:
+            if len(elm)>=minseqlen:
+                yield elm
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
-
+    """ Retourne un générateur de séquences uniques
+    ayant une occurrence >=mincount et leur occurrence
+    Format : yield [sequence, count] """
+    gen_seq = read_fasta(amplicon_file, minseqlen)
+    dict_seq = {}
+    for seq in gen_seq:
+        if seq in dict_seq:
+            dict_seq[seq] += 1
+        else:
+            dict_seq[seq] = 1
+    dict_seq = dict(sorted(dict_seq.items(), key=lambda item:item[1], reverse = True))
+    for seq in dict_seq:
+        if dict_seq[seq]>=mincount:
+            yield [seq, dict_seq[seq]]
 
 def get_chunks(sequence, chunk_size):
     pass
@@ -84,7 +109,7 @@ def get_unique(ids):
     return {}.fromkeys(ids).keys()
 
 
-def common(lst1, lst2): 
+def common(lst1, lst2):
     return list(set(lst1) & set(lst2))
 
 def cut_kmer(sequence, kmer_size):
@@ -94,7 +119,8 @@ def get_identity(alignment_list):
     pass
 
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    """ Retourne un générateur des séquences non chimérique
+    Format : yield [sequence, count]"""
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     pass
