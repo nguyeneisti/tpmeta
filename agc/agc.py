@@ -94,42 +94,48 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     ayant une occurrence >=mincount et leur occurrence
     Format : yield [sequence, count] """
     gen_seq = read_fasta(amplicon_file, minseqlen)
-    dict_seq = {}
+    dict_seq =  #dictionnaire, clé : séquence, valeur : nombre d'occurrence
     for seq in gen_seq:
         if seq in dict_seq:
             dict_seq[seq] += 1
         else:
             dict_seq[seq] = 1
+    #on trie le dictionnaire par ordre décroissant
     dict_seq = dict(sorted(dict_seq.items(), key=lambda item:item[1], reverse = True))
     for seq in dict_seq:
         if dict_seq[seq]>=mincount:
-            yield [seq, dict_seq[seq]]
+            yield [seq, dict_seq[seq]] #renvoi d'un générateur de séruances
 
 def get_chunks(sequence, chunk_size):
     """ Retourne une liste de sous-séquences de taille chunk_size
     non chevauchantes
-    Format : [] """
+    Format : liste """
     subseq = []
+    #parcours de la séquence avec un pas de taille chunk_size
     for i in range(0, len(sequence), chunk_size):
-        if i+chunk_size<=len(sequence):
+        if i+chunk_size<=len(sequence): #ne pas dépasser la séquence
             subseq.append(sequence[i:i+chunk_size])
     return subseq
 
 def get_unique(ids):
+    """ Retourne les id uniques"""
     return {}.fromkeys(ids).keys()
 
-
 def common(lst1, lst2):
+    """ Retourne les éléments communs entre deux listes"""
     return list(set(lst1) & set(lst2))
 
 def cut_kmer(sequence, kmer_size):
-    """Retourne un générateur de tous les mots de longueur k dans sequence
+    """Retourne un générateur de tous mots de longueur kmer_size dans sequence
     Format : yield kmer """
-    for i in range(0,len(sequence)):
-        if i+kmer_size<=len(sequence):
+    length = len(sequence)
+    for i in range(length):
+        if i+kmer_size<=length: #ne pas dépasser la longueur de la séquence
+            #renvoie une partie de la séquence de longueur kmer_size
             kmer = sequence[i:i+kmer_size]
             yield kmer
         else:
+            #si on arrive à la fin de la séquence
             break
 
 def get_identity(alignment_list):
@@ -138,6 +144,7 @@ def get_identity(alignment_list):
     length = 0
     length = len(alignment_list[0])
     for j in range(length):
+        #on compare chaque caractère entre les deux séquences
         if alignment_list[0][j] == alignment_list[1][j]:
             count+=1
     return count*100/length
@@ -188,14 +195,13 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     """ Retourne la liste des OTUS"""
     list = []
-    list_identity = []
     chimera = []
     for elm in chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
         chimera.append(elm)
     for i in range(len(chimera)):
         alignement_list = nw.global_align(chimera[i][0], chimera[0][0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
         identity = get_identity(alignement_list)
-        if identity>=0.95:
+        if identity>=0.97:
             list.append([chimera[i][0],chimera[i][1]])
     return list
 
@@ -221,7 +227,17 @@ def main():
     """
     # Get arguments
     args = get_arguments()
-
+    amplicon_file = args.amplicon_file
+    minseqlen = args.minseqlen
+    mincount = args.mincount
+    chunk_size = args.chunk_size
+    kmer_size = args.kmer_size
+    output_file = args.output_file
+    #gen_seq = dereplication_fulllength(amplicon_file,minseqlen,mincount)
+    #gen_seq = chimera_removal(amplicon_file,minseqlen,mincount,chunk_size,kmer_size)
+    list = abundance_greedy_clustering(amplicon_file,minseqlen,mincount,chunk_size,kmer_size)
+    print(list)
+    write_OTU(list,output_file)
 
 if __name__ == '__main__':
     main()
